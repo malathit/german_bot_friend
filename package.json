@@ -1,0 +1,33 @@
+{
+  "name": "en_de_translate",
+  "version": "1.0.0",
+  "description": "A telegram bot that receives an English word and returns the German equivalent",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "netlify functions:serve"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/malathit/word_translate_to_de.git"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "translat",
+    "yandex"
+  ],
+  "author": "Malathi Thangarajan",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/malathit/word_translate_to_de/issues"
+  },
+  "homepage": "https://github.com/malathit/word_translate_to_de#readme",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "telegraf": "^4.3.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^3.35.4"
+  }
+}
