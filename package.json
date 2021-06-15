@@ -25,9 +25,9 @@
   "homepage": "https://github.com/malathit/word_translate_to_de#readme",
   "dependencies": {
     "axios": "^0.21.1",
+    "faunadb": "^4.3.0",
+    "netlify-cli": "^3.37.25",
     "telegraf": "^4.3.0"
   },
-  "devDependencies": {
-    "netlify-cli": "^3.35.4"
-  }
+  "devDependencies": {}
 }
