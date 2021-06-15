@@ -11,25 +11,24 @@ bot.start((ctx) => ctx.reply(
 
 bot.command('english', async (ctx) => {
     const text = ctx.message.text.split(" ")[1]
-    await db.user_exists(ctx.message.from.id)
-        .then(async (user_exists) => {
-            if (!user_exists) {
-            console.log("User not exists. Saving to db")
-            const user = { 'id': ctx.message.from.id, 'first_name': ctx.message.from.first_name, 'is_bot': ctx.message.from.is_bot }
-            await db.save_user(user).then((response) => console.log("save user response: " + response));
-        }
-    })
-    
-    await dict.get_meaning(text, 'de-en')
-        .then((definitions) => ctx.replyWithHTML(get_reply_text(ctx.message.from.first_name, text, definitions, 'German', 'English')))
-        .catch(log_error(ctx))
+    let user_exists = await db.user_exists(ctx.message.from.id)
+    if (!user_exists) {
+        console.log("User not exists. Saving to db")
+        const user = { 'id': ctx.message.from.id, 'first_name': ctx.message.from.first_name, 'is_bot': ctx.message.from.is_bot }
+        let user_save_res = await db.save_user(user)
+        console.log(user_save_res)
+    }
+    await dict.get_meaning(text, 'de-en', 
+        (definitions) => 
+            ctx.replyWithHTML(get_reply_text(ctx.message.from.first_name, text, definitions, 'German', 'English')),
+        (err) => log_error(ctx))
 })
 
 bot.on('text', async (ctx) => {
-    const text = ctx.message.text
-    await dict.get_meaning(ctx.message.text, 'en-de')
-        .then((definitions) => ctx.replyWithHTML(get_reply_text(ctx.message.from.first_name, text, definitions, 'English', 'German')))
-        .catch(log_error(ctx))
+    await dict.get_meaning(ctx.message.text, 'en-de', 
+        (definitions) => 
+            ctx.replyWithHTML(get_reply_text(ctx.message.from.first_name, ctx.message.text, definitions, 'English', 'German')),
+        (err) => log_error(ctx))
 })
 
 function get_reply_text(sender, text, definitions, textLang, definitionLang) {
