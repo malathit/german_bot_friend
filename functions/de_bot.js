@@ -11,25 +11,33 @@ bot.start((ctx) => ctx.reply(
 
 bot.command('english', async (ctx) => {
     const text = ctx.message.text.split(" ")[1]
-    let user_exists = await db.user_exists(ctx.message.from.id)
-    if (!user_exists) {
-        console.log("User not exists. Saving to db")
-        const user = { 'id': ctx.message.from.id, 'first_name': ctx.message.from.first_name, 'is_bot': ctx.message.from.is_bot }
-        let user_save_res = await db.save_user(user)
-        console.log(user_save_res)
-    }
+    await addUserIfNotPresent({'id': ctx.message.from.id, 'first_name': ctx.message.from.first_name, 'is_bot': ctx.message.from.is_bot})
     await dict.get_meaning(text, 'de-en', 
         (definitions) => 
             ctx.replyWithHTML(get_reply_text(ctx.message.from.first_name, text, definitions, 'German', 'English')),
         (err) => log_error(ctx))
+    await db.add_searched_word(ctx.message.from.id, text)
 })
 
 bot.on('text', async (ctx) => {
-    await dict.get_meaning(ctx.message.text, 'en-de', 
+    const text = ctx.message.text.split(" ")[0]
+    await addUserIfNotPresent({'id': ctx.message.from.id, 'first_name': ctx.message.from.first_name, 'is_bot': ctx.message.from.is_bot})
+    await dict.get_meaning(text, 'en-de', 
         (definitions) => 
             ctx.replyWithHTML(get_reply_text(ctx.message.from.first_name, ctx.message.text, definitions, 'English', 'German')),
         (err) => log_error(ctx))
+    await db.add_searched_word(ctx.message.from.id, text)
 })
+
+async function addUserIfNotPresent(user) {
+    let user_exists = await db.user_exists(user.id)
+    console.log("checked if user exists:", user_exists)
+    if (!user_exists) {
+        console.log("User not exists. Saving to db")
+        let user_save_res = await db.save_user(user)
+        console.log(user_save_res)
+    }
+}
 
 function get_reply_text(sender, text, definitions, textLang, definitionLang) {
     if (definitions.length == 0) {
