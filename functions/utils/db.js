@@ -20,4 +20,8 @@ function add_searched_word(user_id, searched_word, lang_code) {
     }))
 }
 
-module.exports = {user_exists, save_user, add_searched_word}
+function word_count(user_id, text) {
+    return client.query(q.Count(q.Match(q.Index('words_count'), q.Ref(q.Collection('users'), user_id), text)))
+}
+
+module.exports = {user_exists, save_user, add_searched_word, word_count}

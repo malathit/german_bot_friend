@@ -7,9 +7,9 @@ const bot = new Telegraf(process.env.BOT_TOKEN)
 bot.telegram.setWebhook('https://germanbot.malathi.dev/.netlify/functions/de_bot')
 
 bot.start((ctx) => ctx.reply(
-    'Welcome!! Type an English word and I can help you with the german equivalent or type /english and type the German word to know its meaning in English'))
+    'Welcome!! Type an English/German word and I can help you with the German/English meaning'))
 
-bot.command('english', async (ctx) => {
+bot.command('en', async (ctx) => {
     try {
         const text = ctx.message.text.split(" ")[1]
         var definitions = await dict.get_meaning(text, 'de-en')
@@ -24,8 +24,18 @@ bot.command('english', async (ctx) => {
 })
 
 bot.on('text', async (ctx) => {
+    if (ctx.message.from.is_bot) {
+        ctx.reply("No bots please!!")
+        return
+    }
+    const text = ctx.message.text.split(" ")[0]
+    const previous_usage_count = await db.word_count(ctx.message.from.id, text)
+    if (previous_usage_count > 50) {
+        ctx.reply("Ooh no!! You already searched for the word quite a few times. Try with some other words")
+        return
+    }
+
     try {
-        const text = ctx.message.text.split(" ")[0]
         const check_user_promise = addUserIfNotPresent({'id': ctx.message.from.id, 'first_name': ctx.message.from.first_name, 'is_bot': ctx.message.from.is_bot})
         const [de_trans_res, en_trans_res] = await Promise.allSettled([dict.get_meaning(text, 'en-de'), dict.get_meaning(text, 'de-en')])
         if (de_trans_res.status == "fulfilled") {
