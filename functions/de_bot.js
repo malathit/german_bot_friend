@@ -12,9 +12,9 @@ bot.start((ctx) => ctx.reply(
 bot.command('english', async (ctx) => {
     try {
         const text = ctx.message.text.split(" ")[1]
-        await addUserIfNotPresent({'id': ctx.message.from.id, 'first_name': ctx.message.from.first_name, 'is_bot': ctx.message.from.is_bot})
         var definitions = await dict.get_meaning(text, 'de-en')
         ctx.replyWithHTML(get_reply_text(ctx.message.from.first_name, text, definitions, 'German', 'English'))
+        await addUserIfNotPresent({'id': ctx.message.from.id, 'first_name': ctx.message.from.first_name, 'is_bot': ctx.message.from.is_bot})
         if (definitions.length > 0) {
             await db.add_searched_word(ctx.message.from.id, text, "de")
         }
@@ -26,12 +26,28 @@ bot.command('english', async (ctx) => {
 bot.on('text', async (ctx) => {
     try {
         const text = ctx.message.text.split(" ")[0]
-        await addUserIfNotPresent({'id': ctx.message.from.id, 'first_name': ctx.message.from.first_name, 'is_bot': ctx.message.from.is_bot})
-        var definitions = await dict.get_meaning(text, 'en-de')
-        ctx.replyWithHTML(get_reply_text(ctx.message.from.first_name, ctx.message.text, definitions, 'English', 'German'))
-        if (definitions.length > 0) {
-            await db.add_searched_word(ctx.message.from.id, text, "en")
+        const check_user_promise = addUserIfNotPresent({'id': ctx.message.from.id, 'first_name': ctx.message.from.first_name, 'is_bot': ctx.message.from.is_bot})
+        const [de_trans_res, en_trans_res] = await Promise.allSettled([dict.get_meaning(text, 'en-de'), dict.get_meaning(text, 'de-en')])
+        if (de_trans_res.status == "fulfilled") {
+            var de_definitions = de_trans_res.value
+            if (de_definitions.length > 0) {
+                ctx.replyWithHTML(get_reply_text(ctx.message.from.first_name, ctx.message.text, de_definitions, 'English', 'German'))
+                await Promise.allSettled([check_user_promise])
+                await db.add_searched_word(ctx.message.from.id, text, "en")
+            }
         }
+        if (en_trans_res.status == "fulfilled") {
+            var en_definitions = en_trans_res.value
+            if (en_definitions.length > 0) {
+                ctx.replyWithHTML(get_reply_text(ctx.message.from.first_name, ctx.message.text, en_definitions, 'German', 'English'))
+                await Promise.allSettled([check_user_promise])
+                await db.add_searched_word(ctx.message.from.id, text, "de")
+            }
+        }
+        
+        if (de_definitions.length == 0 && en_definitions.length == 0) {
+            ctx.replyWithHTML(get_reply_text(ctx.message.from.first_name, ctx.message.text, de_definitions, 'English/German', 'English/German'))
+        } 
     } catch(err) {
         log_error(ctx)
     } 
