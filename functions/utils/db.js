@@ -1,27 +1,58 @@
+const { Get, Update } = require('faunadb')
 const faunadb = require('faunadb')
 var client = new faunadb.Client({ secret: process.env.FAUNA_KEY })
 const q = faunadb.query
 
-function user_exists(user_id) {
-    return client.query(q.Exists(q.Match(q.Index('users_by_id'), user_id)))
+function add_user_if_not_exists(user) {
+    return client.query(
+        q.Let({
+            'match': q.Match(q.Index('users_by_id'), user.id)
+        }, 
+        q.If(
+            q.Exists(q.Var('match')),
+            {},
+            q.Create(q.Ref(q.Collection('users'), user.id), {'data': user})
+        ))
+    )
 }
 
-function save_user(user) {
-    return client.query(q.Create(q.Ref(q.Collection('users'), user.id.toString()), {'data': user}))
+function add_searched_word(user_id, text, lang_code) {
+    var request = {
+        'user': q.Ref(q.Collection('users'), user_id),
+        "word": text,
+        "lang_code": lang_code,
+        "count": 1,
+        "last_accessed": ""
+    }
+    return client.query(
+        q.Let({
+            'match': q.Match(q.Index('get_user_word'), q.Ref(q.Collection('users'), user_id), text, lang_code)
+        },
+        q.If(
+            q.Exists(q.Var('match')),
+            q.Let({
+                'doc': q.Get(q.Var('match')),
+                'ref': q.Select(['ref'], q.Var('doc')),
+                'current_count': q.Select(['data', 'count'], q.Var('doc'))
+            },
+            q.Update(q.Var('ref'), {'data': { 'count': q.Add(1, q.Var('current_count')) }})),
+            q.Create(q.Collection('word_search'), {'data': request})
+        ))
+    )
 }
 
-function add_searched_word(user_id, searched_word, lang_code) {
-    return client.query(q.Create(q.Collection('word_search'), {
-        'data': {
-            'user': q.Ref(q.Collection('users'), user_id),
-            "word": searched_word,
-            "lang_code": lang_code
-        }
-    }))
+function word_count(user_id, text, lang_code) {
+    return client.query(
+        q.Let({
+            'match': q.Match(q.Index('get_user_word'), q.Ref(q.Collection('users'), user_id), text, lang_code)
+        }, 
+        q.If(
+            q.Exists(q.Var('match')),
+            q.Select(['data', 'count'], q.Get(q.Var('match'))),
+            0
+        )
+        )
+    )
 }
 
-function word_count(user_id, text) {
-    return client.query(q.Count(q.Match(q.Index('words_count'), q.Ref(q.Collection('users'), user_id), text)))
-}
-
-module.exports = {user_exists, save_user, add_searched_word, word_count}
+module.exports = {add_user_if_not_exists, add_searched_word, word_count}
